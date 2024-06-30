@@ -1,0 +1,25 @@
+{
+  "name": "blackchain-study",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdream/blackchain-study.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/birdream/blackchain-study/issues"
+  },
+  "homepage": "https://github.com/birdream/blackchain-study#readme",
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "prettier": "^3.3.2",
+    "typescript": "^5.5.2"
+  }
+}
