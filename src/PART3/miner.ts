@@ -55,6 +55,8 @@ function connect(address: string): void {
 
         ws.on('close', () => {
             // opened.slice(opened.indexOf(address), 1);
+            let idx = opened.findIndex((node) => node.address === address);
+            opened.splice(idx, 1);
             connected.slice(connected.indexOf(address), 1);
         });
     }   
