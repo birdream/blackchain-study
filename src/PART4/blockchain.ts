@@ -4,10 +4,13 @@ const SHA256 = (msg: string): string =>
 
 import * as elliptic from 'elliptic';
 const ec = new elliptic.ec('secp256k1');
-const MINT_WALLET = ec.genKeyPair();
-const MINT_PUBLIC_ADDRESS = MINT_WALLET.getPublic('hex');
-const MINT_PRIVATE_KEY = MINT_WALLET.getPrivate('hex');
 
+const MINT_PRIVATE_ADDRESS =
+    '0700a1ad28a20e5b2a517c00242d3e25a88d84bf54dce9e1733e6096e6d6495e';
+const MINT_KEY_PAIR = ec.keyFromPrivate(MINT_PRIVATE_ADDRESS, 'hex');
+const MINT_PUBLIC_ADDRESS = MINT_KEY_PAIR.getPublic('hex');
+
+import { JOHN_KEY, JENIFER_KEY, MINER_KEY, BOB_KEY } from './keys';
 // Example usage:
 // const hash = SHA256('Hello, world!');
 // console.log(hash);
@@ -26,14 +29,14 @@ const MINER_WALLET = ec.genKeyPair();
 const BOB_WALLET = ec.genKeyPair();
 
 class Block {
-    timestamp: number;
+    timestamp: string;
     data: any[];
     hash: string;
     previousHash: string;
     nonce: number;
 
-    constructor(data: any[]) {
-        this.timestamp = Date.now();
+    constructor(timestamp: string, data: any[]) {
+        this.timestamp = timestamp;
         this.data = data;
         this.hash = this.getHash();
         this.previousHash = '';
@@ -60,8 +63,10 @@ class Block {
         console.log('Block mined: ' + this.hash);
     }
 
-    hasValidTransactions(chain: BlockChain) {
-        return this.data.every((tx: Transaction) => tx.isValid(tx, chain));
+    static hasValidTransactions(block: Block, chain: BlockChain) {
+        return block.data.every((tx: Transaction) =>
+            Transaction.isValid(tx, chain),
+        );
     }
 }
 
@@ -75,10 +80,10 @@ class BlockChain {
     constructor() {
         const initialCoinRelease = new Transaction(
             MINT_PUBLIC_ADDRESS,
-            JOHN_WALLET.getPublic('hex'),
+            JOHN_KEY.getPublic('hex'),
             1000,
         );
-        this.chain = [new Block([initialCoinRelease])];
+        this.chain = [new Block('', [initialCoinRelease])];
         this.difficulty = 2;
         this.blockTime = 5000; //5s
         this.transactions = [];
@@ -90,7 +95,7 @@ class BlockChain {
             transaction.from &&
             transaction.to &&
             transaction.amount &&
-            transaction.isValid(transaction, this)
+            Transaction.isValid(transaction, this)
         ) {
             this.transactions.push(transaction);
         }
@@ -111,10 +116,11 @@ class BlockChain {
             minerRewardAddress,
             this.reward + gas,
         );
+        rewardTransaction.signTransaction(MINER_KEY);
 
         this.transactions.push(rewardTransaction);
 
-        let block = new Block(this.transactions);
+        let block = new Block(Date.now().toString(), this.transactions);
         block.mine(this.difficulty);
 
         this.chain.push(block);
@@ -153,7 +159,7 @@ class BlockChain {
         this.chain.push(newBlock);
 
         this.difficulty +=
-            Date.now() - newBlock.timestamp > this.blockTime ? -1 : 1;
+            Date.now() - Number(newBlock.timestamp) > this.blockTime ? -1 : 1;
     }
 
     isValid() {
@@ -169,7 +175,7 @@ class BlockChain {
                 return false;
             }
 
-            if (!currentBlock.hasValidTransactions(this)) {
+            if (!Block.hasValidTransactions(currentBlock, this)) {
                 return false;
             }
         }
@@ -205,12 +211,13 @@ class Transaction {
         this.signature = sig.toDER('hex');
     }
 
-    isValid(tx: Transaction, chain: BlockChain) {
+    static isValid(tx: Transaction, chain: BlockChain) {
         return (
             tx.from &&
             tx.to &&
             tx.amount &&
-            chain.getBalanceOfAddress(tx.from) >= tx.amount + tx.gas &&
+            (chain.getBalanceOfAddress(tx.from) >= tx.amount + tx.gas ||
+                tx.from === MINT_PUBLIC_ADDRESS) &&
             ec
                 .keyFromPublic(tx.from, 'hex')
                 .verify(
@@ -223,44 +230,20 @@ class Transaction {
 
 const NormanCoin = new BlockChain();
 
-const transaction1 = new Transaction(
-    JOHN_WALLET.getPublic('hex'),
-    JENIFER_WALLET.getPublic('hex'),
-    200,
-    5,
-);
-transaction1.signTransaction(JOHN_WALLET);
-NormanCoin.addTransaction(transaction1);
-NormanCoin.minePendingTransactions(MINER_WALLET.getPublic('hex'));
+export { NormanCoin, BlockChain, Block, Transaction };
+// const transaction1 = new Transaction(JOHN_WALLET.getPublic('hex'), JENIFER_WALLET.getPublic('hex'), 200, 5);
+// transaction1.signTransaction(JOHN_WALLET);
+// NormanCoin.addTransaction(transaction1);
+// NormanCoin.minePendingTransactions(MINER_WALLET.getPublic('hex'));
 
-const transaction2 = new Transaction(
-    JENIFER_WALLET.getPublic('hex'),
-    BOB_WALLET.getPublic('hex'),
-    100,
-    5,
-);
-transaction2.signTransaction(JENIFER_WALLET);
-NormanCoin.addTransaction(transaction2);
-NormanCoin.minePendingTransactions(MINER_WALLET.getPublic('hex'));
+// const transaction2 = new Transaction(JENIFER_WALLET.getPublic('hex'), BOB_WALLET.getPublic('hex'), 100, 5);
+// transaction2.signTransaction(JENIFER_WALLET);
+// NormanCoin.addTransaction(transaction2);
+// NormanCoin.minePendingTransactions(MINER_WALLET.getPublic('hex'));
 
-console.dir(NormanCoin.chain, { depth: null });
-console.log(
-    'Balance of John is',
-    NormanCoin.getBalanceOfAddress(JOHN_WALLET.getPublic('hex')),
-);
-console.log(
-    'Balance of Jenifer is',
-    NormanCoin.getBalanceOfAddress(JENIFER_WALLET.getPublic('hex')),
-);
-console.log(
-    'Balance of Bob is',
-    NormanCoin.getBalanceOfAddress(BOB_WALLET.getPublic('hex')),
-);
-console.log(
-    'Balance of Miner is',
-    NormanCoin.getBalanceOfAddress(MINER_WALLET.getPublic('hex')),
-);
-console.log(
-    'Balance of MINT is',
-    NormanCoin.getBalanceOfAddress(MINT_PUBLIC_ADDRESS),
-);
+// console.dir(NormanCoin.chain, { depth: null });
+// console.log('Balance of John is', NormanCoin.getBalanceOfAddress(JOHN_WALLET.getPublic('hex')));
+// console.log('Balance of Jenifer is', NormanCoin.getBalanceOfAddress(JENIFER_WALLET.getPublic('hex')));
+// console.log('Balance of Bob is', NormanCoin.getBalanceOfAddress(BOB_WALLET.getPublic('hex')));
+// console.log('Balance of Miner is', NormanCoin.getBalanceOfAddress(MINER_WALLET.getPublic('hex')));
+// console.log('Balance of MINT is', NormanCoin.getBalanceOfAddress(MINT_PUBLIC_ADDRESS));

@@ -5,14 +5,14 @@ const MY_ADDRESS = `ws://localhost:${PORT}`;
 const server = new WebSocket.Server({ port: PORT });
 
 let opened: any[] = [];
-let connected: any[] = [] ;
+let connected: any[] = [];
 
 console.log('Jenifer listening on PORT ' + PORT);
 
 type Message = {
-    type: string,
-    data: any
-}
+    type: string;
+    data: any;
+};
 server.on('connection', (ws: WebSocket) => {
     // console.log('Client connected');
 
@@ -20,12 +20,12 @@ server.on('connection', (ws: WebSocket) => {
         const _message: Message = JSON.parse(message);
         console.log(`Received message: ${message}`);
 
-        switch(_message.type) {
-            case "TYPE_HANDSHAKE":
+        switch (_message.type) {
+            case 'TYPE_HANDSHAKE':
                 const nodes = _message.data;
                 nodes.forEach((node: any) => connect(node));
             default:
-                break
+                break;
         }
     });
 
@@ -35,18 +35,33 @@ server.on('connection', (ws: WebSocket) => {
 });
 
 function connect(address: string): void {
-    if (!connected.find((peerAddress) => peerAddress === address) && address !== MY_ADDRESS) {
+    if (
+        !connected.find((peerAddress) => peerAddress === address) &&
+        address !== MY_ADDRESS
+    ) {
         const ws = new WebSocket(address);
 
         ws.on('open', () => {
-            ws.send(JSON.stringify(produceMessage('TYPE_HANDSHAKE', [MY_ADDRESS, ...connected])));
+            ws.send(
+                JSON.stringify(
+                    produceMessage('TYPE_HANDSHAKE', [
+                        MY_ADDRESS,
+                        ...connected,
+                    ]),
+                ),
+            );
 
             opened.forEach((node) => {
-                node.socket.send(JSON.stringify(produceMessage('TYPE_HANDSHAKE', [address])));
+                node.socket.send(
+                    JSON.stringify(produceMessage('TYPE_HANDSHAKE', [address])),
+                );
             });
 
-            if (!opened.find((peerAddress) => peerAddress === address) && address !== MY_ADDRESS) {
-                opened.push({ socket: ws, address});
+            if (
+                !opened.find((peerAddress) => peerAddress === address) &&
+                address !== MY_ADDRESS
+            ) {
+                opened.push({ socket: ws, address });
                 connected.push(address);
             }
         });
@@ -57,14 +72,14 @@ function connect(address: string): void {
             opened.splice(idx, 1);
             connected.slice(connected.indexOf(address), 1);
         });
-    }   
+    }
 }
 
 function produceMessage(type: string, data: any): Message {
     return {
         type,
-        data
-    }
+        data,
+    };
 }
 
 function sendMessage(message: Message) {
@@ -74,8 +89,7 @@ function sendMessage(message: Message) {
 }
 
 setTimeout(() => {
-    sendMessage(produceMessage('MESSAGE', ['HELLO FROM Jenifer!']))
-}, 15000)
+    sendMessage(produceMessage('MESSAGE', ['HELLO FROM Jenifer!']));
+}, 15000);
 
-
-process.on("uncaughtException", err => console.log(err));
+process.on('uncaughtException', (err) => console.log(err));
