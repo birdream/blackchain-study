@@ -3,19 +3,17 @@ import WebSocket from 'ws';
 import { Block, NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
-import { MINER_KEY } from './keys';
+import { JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
 import { send } from 'process';
 
-const PORT = 3000;
-const MY_ADDRESS = 'ws://localhost:3000';
+const PORT = 3002;
+const MY_ADDRESS = 'ws://localhost:3002';
 const server = new WebSocket.Server({ port: PORT });
-
-const PEERS = ['ws://localhost:3001', 'ws://localhost:3002'];
 
 let opened: any[] = [];
 let connected: any[] = [];
 
-console.log('Miner listening on PORT ' + PORT);
+console.log('Jenifer listening on PORT ' + PORT);
 
 type Message = {
     type: string;
@@ -46,8 +44,8 @@ server.on('connection', (ws: WebSocket) => {
                         `Current chain length: ${NormanCoin.chain.length}`,
                     );
                 }
-                break;
 
+                break;
             case 'TYPE_CREATE_TRANSACTION':
                 const transaction = _message.data;
                 if (!isTransactionDuplicate(transaction)) {
@@ -74,29 +72,6 @@ function isTransactionDuplicate(transaction: Transaction): boolean {
         (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
     );
 }
-
-function isTransactionIncluded(transaction: Transaction): boolean {
-    return NormanCoin.chain.some((block) =>
-        block.data.some(
-            (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
-        ),
-    );
-}
-
-// Broadcast transactions every 10 seconds
-function broadcastTransaction(): void {
-    NormanCoin.transactions.forEach((transaction, idx) => {
-        if (isTransactionIncluded(transaction)) {
-            NormanCoin.transactions.splice(idx, 1);
-        } else {
-            sendMessage(produceMessage('TYPE_CREATE_TRANSACTION', transaction));
-        }
-    });
-
-    setTimeout(broadcastTransaction, 10000); // Broadcast to all connected nodes after a delay
-}
-
-broadcastTransaction();
 
 function connect(address: string): void {
     if (
@@ -152,33 +127,28 @@ function sendMessage(message: Message) {
     });
 }
 
-PEERS.forEach((peer) => {
-    connect(peer);
-});
-
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: 'Enter a command:\n',
 });
 
+const ownerKey = JOHN_KEY;
 rl.on('line', (command) => {
     switch (command.toLocaleLowerCase()) {
-        case 'mine':
-            if (!NormanCoin.transactions.length) {
-                break;
-            }
-            NormanCoin.minePendingTransactions(MINER_KEY.getPublic('hex'));
-            sendMessage(
-                produceMessage('TYPE_REPLACE_CHAIN', [
-                    NormanCoin.getLastBlock(),
-                    NormanCoin.difficulty,
-                ]),
+        case 'send':
+            const transaction = new Transaction(
+                ownerKey.getPublic('hex'),
+                JENIFER_KEY.getPublic('hex'),
+                200,
+                20, // gas
             );
+            transaction.signTransaction(ownerKey);
+            sendMessage(produceMessage('TYPE_CREATE_TRANSACTION', transaction));
             break;
         case 'balance':
             console.log(
-                `Your balance is: ${NormanCoin.getBalanceOfAddress(MINER_KEY.getPublic('hex'))}`,
+                `Your balance is: ${NormanCoin.getBalanceOfAddress(ownerKey.getPublic('hex'))}`,
             );
             break;
         case 'blockchain':
