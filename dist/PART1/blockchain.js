@@ -53,14 +53,18 @@ class Block {
         this.nonce = 0;
     }
     getHash() {
-        return SHA256(this.timestamp + this.previousHash + JSON.stringify(this.data) + this.nonce).toString();
+        return SHA256(this.timestamp +
+            this.previousHash +
+            JSON.stringify(this.data) +
+            this.nonce).toString();
     }
     mine(difficulty) {
-        while (this.hash.substring(0, difficulty) !== Array(difficulty + 1).join("0")) {
+        while (this.hash.substring(0, difficulty) !==
+            Array(difficulty + 1).join('0')) {
             this.nonce++;
             this.hash = this.getHash();
         }
-        console.log("Block mined: " + this.hash);
+        console.log('Block mined: ' + this.hash);
     }
     hasValidTransactions(chain) {
         return this.data.every((tx) => tx.isValid(tx, chain));
@@ -76,7 +80,10 @@ class BlockChain {
         this.reward = 10;
     }
     addTransaction(transaction) {
-        if (transaction.from && transaction.to && transaction.amount && transaction.isValid(transaction, this)) {
+        if (transaction.from &&
+            transaction.to &&
+            transaction.amount &&
+            transaction.isValid(transaction, this)) {
             this.transactions.push(transaction);
         }
     }
@@ -120,7 +127,8 @@ class BlockChain {
         newBlock.previousHash = this.getLastBlock().hash;
         newBlock.mine(this.difficulty);
         this.chain.push(newBlock);
-        this.difficulty += Date.now() - newBlock.timestamp > this.blockTime ? -1 : 1;
+        this.difficulty +=
+            Date.now() - newBlock.timestamp > this.blockTime ? -1 : 1;
     }
     isValid() {
         for (let i = 1; i < this.chain.length; i++) {
@@ -161,9 +169,13 @@ class Transaction {
         this.signature = sig.toDER('hex');
     }
     isValid(tx, chain) {
-        return tx.from && tx.to && tx.amount &&
+        return (tx.from &&
+            tx.to &&
+            tx.amount &&
             chain.getBalanceOfAddress(tx.from) >= tx.amount + tx.gas &&
-            ec.keyFromPublic(tx.from, 'hex').verify(SHA256(tx.from + tx.to + tx.amount + tx.gas), tx.signature);
+            ec
+                .keyFromPublic(tx.from, 'hex')
+                .verify(SHA256(tx.from + tx.to + tx.amount + tx.gas), tx.signature));
     }
 }
 const NormanCoin = new BlockChain();

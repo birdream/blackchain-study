@@ -4,10 +4,9 @@ import { Block, NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
 import { JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
-import { send } from 'process';
 
-const PORT = 3000;
-const MY_ADDRESS = 'ws://localhost:3000';
+const PORT = 3001;
+const MY_ADDRESS = 'ws://localhost:3001';
 const server = new WebSocket.Server({ port: PORT });
 
 let opened: any[] = [];
@@ -24,16 +23,18 @@ server.on('connection', (ws: WebSocket) => {
 
     ws.on('message', (message: string) => {
         const _message: Message = JSON.parse(message);
-        console.log(`Received message: ${message}`);
+        console.log(`Received message:`);
+        console.log(_message);
 
         switch (_message.type) {
             case 'TYPE_REPLACE_CHAIN':
+                console.log('Received new chain from peer');
                 const [newBlock, newDiff] = _message.data;
 
                 if (
                     newBlock.previousHash !==
                         NormanCoin.getLastBlock().previousHash &&
-                    NormanCoin.getLastBlock().hash === newBlock.hash &&
+                    NormanCoin.getLastBlock().hash === newBlock.previousHash &&
                     Block.hasValidTransactions(newBlock, NormanCoin)
                 ) {
                     NormanCoin.chain.push(newBlock);
@@ -43,6 +44,8 @@ server.on('connection', (ws: WebSocket) => {
                     console.log(
                         `Current chain length: ${NormanCoin.chain.length}`,
                     );
+                } else {
+                    console.log('Invalid block received');
                 }
 
                 break;
@@ -62,9 +65,9 @@ server.on('connection', (ws: WebSocket) => {
         }
     });
 
-    ws.on('close', () => {
-        console.log('Client disconnected');
-    });
+    // ws.on('close', () => {
+    //     console.log('Client disconnected');
+    // });
 });
 
 function isTransactionDuplicate(transaction: Transaction): boolean {
@@ -133,24 +136,27 @@ const rl = readline.createInterface({
     prompt: 'Enter a command:\n',
 });
 
-const ownerKey = JENIFER_KEY;
+const ownerKey = JOHN_KEY;
 rl.on('line', (command) => {
     switch (command.toLocaleLowerCase()) {
         case 'send':
             const transaction = new Transaction(
                 ownerKey.getPublic('hex'),
-                JOHN_KEY.getPublic('hex'),
+                JENIFER_KEY.getPublic('hex'),
                 100,
                 15, // gas
             );
             transaction.signTransaction(ownerKey);
             sendMessage(produceMessage('TYPE_CREATE_TRANSACTION', transaction));
+            console.log(`Transaction sent: ${transaction?.signature}`);
             break;
+        case 'bl':
         case 'balance':
             console.log(
-                `Your balance is: ${NormanCoin.getBalanceOfAddress(ownerKey.getPublic('hex'))}`,
+                `John Your balance is: ${NormanCoin.getBalanceOfAddress(ownerKey.getPublic('hex'))}`,
             );
             break;
+        case 'bc':
         case 'blockchain':
             console.log(JSON.stringify(NormanCoin.chain, null, 2));
             break;

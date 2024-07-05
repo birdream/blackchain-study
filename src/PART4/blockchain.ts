@@ -23,10 +23,10 @@ import { JOHN_KEY, JENIFER_KEY, MINER_KEY, BOB_KEY } from './keys';
 //     nonce: number
 // }
 
-const JOHN_WALLET = ec.genKeyPair();
-const JENIFER_WALLET = ec.genKeyPair();
-const MINER_WALLET = ec.genKeyPair();
-const BOB_WALLET = ec.genKeyPair();
+// const JOHN_WALLET = ec.genKeyPair();
+// const JENIFER_WALLET = ec.genKeyPair();
+// const MINER_WALLET = ec.genKeyPair();
+// const BOB_WALLET = ec.genKeyPair();
 
 class Block {
     timestamp: string;
@@ -38,17 +38,17 @@ class Block {
     constructor(timestamp: string, data: any[]) {
         this.timestamp = timestamp;
         this.data = data;
-        this.hash = this.getHash();
+        this.hash = Block.getHash(this);
         this.previousHash = '';
         this.nonce = 0;
     }
 
-    getHash() {
+    static getHash(block: Block) {
         return SHA256(
-            this.timestamp +
-                this.previousHash +
-                JSON.stringify(this.data) +
-                this.nonce,
+            block.timestamp +
+                JSON.stringify(block.data) +
+                block.previousHash +
+                block.nonce,
         ).toString();
     }
 
@@ -58,7 +58,7 @@ class Block {
             Array(difficulty + 1).join('0')
         ) {
             this.nonce++;
-            this.hash = this.getHash();
+            this.hash = Block.getHash(this);
         }
         console.log('Block mined: ' + this.hash);
     }
@@ -102,28 +102,28 @@ class BlockChain {
     }
 
     minePendingTransactions(minerRewardAddress: string) {
-        // no valid pending transactions
         if (this.transactions.length === 0) {
+            console.log('minePendingTransactions No transactions to mine.');
             return;
         }
-
         let gas = 0;
         this.transactions.forEach((tx: Transaction) => {
             gas += tx.gas;
         });
+
         const rewardTransaction = new Transaction(
             MINT_PUBLIC_ADDRESS,
             minerRewardAddress,
             this.reward + gas,
         );
-        rewardTransaction.signTransaction(MINER_KEY);
+        rewardTransaction.signTransaction(MINT_KEY_PAIR);
 
-        this.transactions.push(rewardTransaction);
-
-        let block = new Block(Date.now().toString(), this.transactions);
-        block.mine(this.difficulty);
-
-        this.chain.push(block);
+        this.addBlock(
+            new Block(Date.now().toString(), [
+                rewardTransaction,
+                ...this.transactions,
+            ]),
+        );
 
         this.transactions = [];
     }
@@ -167,7 +167,7 @@ class BlockChain {
             const currentBlock = this.chain[i];
             const previousBlock = this.chain[i - 1];
 
-            if (currentBlock.hash !== currentBlock.getHash()) {
+            if (currentBlock.hash !== Block.getHash(currentBlock)) {
                 return false;
             }
 

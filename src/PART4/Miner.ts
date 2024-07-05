@@ -4,7 +4,6 @@ import { Block, NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
 import { MINER_KEY } from './keys';
-import { send } from 'process';
 
 const PORT = 3000;
 const MY_ADDRESS = 'ws://localhost:3000';
@@ -26,7 +25,8 @@ server.on('connection', (ws: WebSocket) => {
 
     ws.on('message', (message: string) => {
         const _message: Message = JSON.parse(message);
-        console.log(`Received message: ${message}`);
+        console.log(`Received message:`);
+        console.log(_message);
 
         switch (_message.type) {
             case 'TYPE_REPLACE_CHAIN':
@@ -35,7 +35,7 @@ server.on('connection', (ws: WebSocket) => {
                 if (
                     newBlock.previousHash !==
                         NormanCoin.getLastBlock().previousHash &&
-                    NormanCoin.getLastBlock().hash === newBlock.hash &&
+                    NormanCoin.getLastBlock().hash === newBlock.previousHash &&
                     Block.hasValidTransactions(newBlock, NormanCoin)
                 ) {
                     NormanCoin.chain.push(newBlock);
@@ -52,7 +52,7 @@ server.on('connection', (ws: WebSocket) => {
                 const transaction = _message.data;
                 if (!isTransactionDuplicate(transaction)) {
                     NormanCoin.addTransaction(transaction);
-                    console.log(`New transaction added: ${transaction.hash}`);
+                    console.log(`New transaction added: ${transaction}`);
                 }
 
                 break;
@@ -64,9 +64,9 @@ server.on('connection', (ws: WebSocket) => {
         }
     });
 
-    ws.on('close', () => {
-        console.log('Client disconnected');
-    });
+    // ws.on('close', () => {
+    //     console.log('Client disconnected');
+    // });
 });
 
 function isTransactionDuplicate(transaction: Transaction): boolean {
@@ -166,6 +166,7 @@ rl.on('line', (command) => {
     switch (command.toLocaleLowerCase()) {
         case 'mine':
             if (!NormanCoin.transactions.length) {
+                console.log('No transactions to mine');
                 break;
             }
             NormanCoin.minePendingTransactions(MINER_KEY.getPublic('hex'));
@@ -176,11 +177,13 @@ rl.on('line', (command) => {
                 ]),
             );
             break;
+        case 'bl':
         case 'balance':
             console.log(
-                `Your balance is: ${NormanCoin.getBalanceOfAddress(MINER_KEY.getPublic('hex'))}`,
+                `Miner Your balance is: ${NormanCoin.getBalanceOfAddress(MINER_KEY.getPublic('hex'))}`,
             );
             break;
+        case 'bc':
         case 'blockchain':
             console.log(JSON.stringify(NormanCoin.chain, null, 2));
             break;
