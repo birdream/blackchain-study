@@ -34,13 +34,13 @@ server.on('connection', (ws: WebSocket) => {
 
         switch (_message.type) {
             case 'TYPE_REPLACE_CHAIN':
-                console.log('Received new chain from peer');
-                const [newBlock, newDiff] = _message.data;
+                const [newBlock, newDiff]: [Block, number] = _message.data;
 
                 if (
-                    newBlock.previousHash !==
-                        NormanCoin.getLastBlock().previousHash &&
-                    NormanCoin.getLastBlock().hash === newBlock.previousHash &&
+                    newBlock.blockHeader.previousHash !==
+                        NormanCoin.getLastBlock().blockHeader.previousHash &&
+                    NormanCoin.getLastBlock().hash ===
+                        newBlock.blockHeader.previousHash &&
                     Block.hasValidTransactions(newBlock, NormanCoin)
                 ) {
                     NormanCoin.chain.push(newBlock);
@@ -50,10 +50,7 @@ server.on('connection', (ws: WebSocket) => {
                     console.log(
                         `Current chain length: ${NormanCoin.chain.length}`,
                     );
-                } else {
-                    console.log('Invalid block received');
                 }
-
                 break;
             case 'TYPE_CREATE_TRANSACTION':
                 const transaction = _message.data;
@@ -66,7 +63,7 @@ server.on('connection', (ws: WebSocket) => {
             case 'TYPE_HANDSHAKE':
                 const nodes = _message.data;
                 nodes.forEach((node: any) =>
-                    connect(node, MY_ADDRESS, opened, connected),
+                    connect(node, MY_ADDRESS, connected, opened),
                 );
             default:
                 break;
@@ -118,6 +115,12 @@ rl.on('line', (command) => {
         case 'bc':
         case 'blockchain':
             console.log(JSON.stringify(NormanCoin.chain, null, 2));
+            break;
+        case 'h':
+        case 'header':
+            console.log(NormanCoin.chain[1]?.blockHeader);
+            console.log(NormanCoin.chain[2]?.blockHeader);
+            console.log(NormanCoin.chain[3]?.blockHeader);
             break;
         case 'clear':
             console.clear();

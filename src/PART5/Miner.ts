@@ -32,12 +32,13 @@ server.on('connection', (ws: WebSocket) => {
 
         switch (_message.type) {
             case 'TYPE_REPLACE_CHAIN':
-                const [newBlock, newDiff] = _message.data;
+                const [newBlock, newDiff]: [Block, number] = _message.data;
 
                 if (
-                    newBlock.previousHash !==
-                        NormanCoin.getLastBlock().previousHash &&
-                    NormanCoin.getLastBlock().hash === newBlock.previousHash &&
+                    newBlock.blockHeader.previousHash !==
+                        NormanCoin.getLastBlock().blockHeader.previousHash &&
+                    NormanCoin.getLastBlock().hash ===
+                        newBlock.blockHeader.previousHash &&
                     Block.hasValidTransactions(newBlock, NormanCoin)
                 ) {
                     NormanCoin.chain.push(newBlock);
@@ -61,7 +62,7 @@ server.on('connection', (ws: WebSocket) => {
             case 'TYPE_HANDSHAKE':
                 const nodes = _message.data;
                 nodes.forEach((node: any) =>
-                    connect(node, MY_ADDRESS, opened, connected),
+                    connect(node, MY_ADDRESS, connected, opened),
                 );
             default:
                 break;
@@ -74,7 +75,7 @@ server.on('connection', (ws: WebSocket) => {
 });
 
 PEERS.forEach((peer) => {
-    connect(peer, MY_ADDRESS, opened, connected);
+    connect(peer, MY_ADDRESS, connected, opened);
 });
 
 const rl = readline.createInterface({

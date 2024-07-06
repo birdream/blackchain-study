@@ -53,7 +53,7 @@ server.on('connection', (ws: WebSocket) => {
 // }
 
 PEERS.forEach((peer) => {
-    connect(peer, MY_ADDRESS, opened, connected);
+    connect(peer, MY_ADDRESS, connected, opened);
 });
 
 const rl = readline.createInterface({

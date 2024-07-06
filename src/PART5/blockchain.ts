@@ -2,6 +2,8 @@ import * as crypto from 'crypto';
 const SHA256 = (msg: string): string =>
     crypto.createHash('sha256').update(msg).digest('hex');
 
+import * as Merkle from './utils/merkleRootUtil';
+
 import * as elliptic from 'elliptic';
 const ec = new elliptic.ec('secp256k1');
 
@@ -30,26 +32,45 @@ import { JOHN_KEY, JENIFER_KEY, MINER_KEY, BOB_KEY } from './keys';
 // const BOB_WALLET = ec.genKeyPair();
 
 class Block {
-    timestamp: string;
     data: any[];
     hash: string;
-    previousHash: string;
-    nonce: number;
+    transactionCount: number;
+    blockSize: number;
+    blockHeader: {
+        nonce: number;
+        previousHash: string;
+        timestamp: number;
+        difficulty: number;
+        merkleRoot: any;
+    };
 
-    constructor(timestamp: string, data: any[]) {
-        this.timestamp = timestamp;
+    constructor(
+        timestamp: number,
+        data: any[],
+        transactionCount: number,
+        difficulty: number,
+        merkleRoot: any,
+    ) {
         this.data = data;
-        this.hash = Block.getHash(this);
-        this.previousHash = '';
-        this.nonce = 0;
+        this.blockHeader = {
+            timestamp: timestamp,
+            difficulty: difficulty,
+            merkleRoot: merkleRoot,
+            previousHash: '',
+            nonce: 0,
+        };
+        this.transactionCount = transactionCount;
+        this.blockSize = JSON.stringify(this).length;
+        this.hash = Block.getHash(this.blockHeader);
     }
 
-    static getHash(block: Block) {
+    static getHash(blockHeader: Block['blockHeader']): string {
         return SHA256(
-            block.timestamp +
-                JSON.stringify(block.data) +
-                block.previousHash +
-                block.nonce,
+            blockHeader.nonce +
+                blockHeader.previousHash +
+                blockHeader.timestamp +
+                blockHeader.difficulty +
+                blockHeader.merkleRoot,
         ).toString();
     }
 
@@ -58,8 +79,8 @@ class Block {
             this.hash.substring(0, difficulty) !==
             Array(difficulty + 1).join('0')
         ) {
-            this.nonce++;
-            this.hash = Block.getHash(this);
+            this.blockHeader.nonce++;
+            this.hash = Block.getHash(this.blockHeader);
         }
         console.log('Block mined: ' + this.hash);
     }
@@ -79,16 +100,19 @@ class BlockChain {
     reward: number;
 
     constructor() {
+        this.difficulty = 2;
+        this.blockTime = 5000; //5s
+        this.transactions = [];
+        this.reward = 10;
+
         const initialCoinRelease = new Transaction(
             MINT_PUBLIC_ADDRESS,
             JOHN_KEY.getPublic('hex'),
             10000,
         );
-        this.chain = [new Block('', [initialCoinRelease])];
-        this.difficulty = 2;
-        this.blockTime = 5000; //5s
-        this.transactions = [];
-        this.reward = 10;
+        this.chain = [
+            new Block(0, [initialCoinRelease], 1, this.difficulty, '0'),
+        ];
     }
 
     addTransaction(transaction: Transaction) {
@@ -120,10 +144,13 @@ class BlockChain {
         rewardTransaction.signTransaction(MINT_KEY_PAIR);
 
         this.addBlock(
-            new Block(Date.now().toString(), [
-                rewardTransaction,
-                ...this.transactions,
-            ]),
+            new Block(
+                Date.now(),
+                [rewardTransaction, ...this.transactions],
+                this.transactions.length + 1,
+                this.difficulty,
+                '0',
+            ),
         );
 
         this.transactions = [];
@@ -155,12 +182,15 @@ class BlockChain {
     }
 
     addBlock(newBlock: Block) {
-        newBlock.previousHash = this.getLastBlock().hash;
+        newBlock.blockHeader.previousHash = this.getLastBlock().hash;
+        newBlock.blockHeader.merkleRoot = Merkle.getMerkleRoot(newBlock);
         newBlock.mine(this.difficulty);
         this.chain.push(newBlock);
 
         this.difficulty +=
-            Date.now() - Number(newBlock.timestamp) > this.blockTime ? -1 : 1;
+            Date.now() - newBlock.blockHeader.timestamp > this.blockTime
+                ? -1
+                : 1;
     }
 
     isValid() {
@@ -168,14 +198,15 @@ class BlockChain {
             const currentBlock = this.chain[i];
             const previousBlock = this.chain[i - 1];
 
-            if (currentBlock.hash !== Block.getHash(currentBlock)) {
+            if (currentBlock.hash !== Block.getHash(currentBlock.blockHeader)) {
                 console.log('Invalid hash: ' + currentBlock.hash);
                 return false;
             }
 
-            if (currentBlock.previousHash !== previousBlock.hash) {
+            if (currentBlock.blockHeader.previousHash !== previousBlock.hash) {
                 console.log(
-                    'Invalid previous hash: ' + currentBlock.previousHash,
+                    'Invalid previous hash: ' +
+                        currentBlock.blockHeader.previousHash,
                 );
                 return false;
             }

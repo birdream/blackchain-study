@@ -34,12 +34,13 @@ server.on('connection', (ws: WebSocket) => {
 
         switch (_message.type) {
             case 'TYPE_REPLACE_CHAIN':
-                const [newBlock, newDiff] = _message.data;
+                const [newBlock, newDiff]: [Block, number] = _message.data;
 
                 if (
-                    newBlock.previousHash !==
-                        NormanCoin.getLastBlock().previousHash &&
-                    NormanCoin.getLastBlock().hash === newBlock.previousHash &&
+                    newBlock.blockHeader.previousHash !==
+                        NormanCoin.getLastBlock().blockHeader.previousHash &&
+                    NormanCoin.getLastBlock().hash ===
+                        newBlock.blockHeader.previousHash &&
                     Block.hasValidTransactions(newBlock, NormanCoin)
                 ) {
                     NormanCoin.chain.push(newBlock);
@@ -50,7 +51,6 @@ server.on('connection', (ws: WebSocket) => {
                         `Current chain length: ${NormanCoin.chain.length}`,
                     );
                 }
-
                 break;
             case 'TYPE_CREATE_TRANSACTION':
                 const transaction = _message.data;
@@ -68,7 +68,7 @@ server.on('connection', (ws: WebSocket) => {
             case 'TYPE_HANDSHAKE':
                 const nodes = _message.data;
                 nodes.forEach((node: any) =>
-                    connect(node, MY_ADDRESS, opened, connected),
+                    connect(node, MY_ADDRESS, connected, opened),
                 );
 
             case 'TYPE_GET_BALANCE':
@@ -112,7 +112,6 @@ server.on('connection', (ws: WebSocket) => {
     //     console.log('Client disconnected');
     // });
 });
-
 
 const rl = readline.createInterface({
     input: process.stdin,
