@@ -48,15 +48,53 @@ server.on('connection', (ws: WebSocket) => {
                 break;
             case 'TYPE_CREATE_TRANSACTION':
                 const transaction = _message.data;
+                console.log(transaction);
                 if (!isTransactionDuplicate(transaction)) {
                     NormanCoin.addTransaction(transaction);
                     console.log(`New transaction added: ${transaction.hash}`);
+                } else {
+                    console.log(
+                        `Transaction already exists: ${transaction.hash}`,
+                    );
                 }
 
                 break;
             case 'TYPE_HANDSHAKE':
                 const nodes = _message.data;
                 nodes.forEach((node: any) => connect(node));
+
+            case 'TYPE_GET_BALANCE':
+                const [address, publicKey] = _message.data;
+                opened.forEach((node) => {
+                    if (node.address === address) {
+                        const balance =
+                            NormanCoin.getBalanceOfAddress(publicKey);
+                        node.socket.send(
+                            JSON.stringify(
+                                produceMessage('TYPE_GET_BALANCE_RESPONSE', [
+                                    address,
+                                    balance,
+                                ]),
+                            ),
+                        );
+                    }
+                });
+                break;
+            case 'TYPE_VERIFY':
+                const peer_address = _message.data[0];
+                const isValid = NormanCoin.isValid();
+                opened.forEach((node) => {
+                    if (node.address === peer_address) {
+                        node.socket.send(
+                            JSON.stringify(
+                                produceMessage('TYPE_VERIFY_RESPONSE', [
+                                    isValid,
+                                ]),
+                            ),
+                        );
+                    }
+                });
+                break;
             default:
                 break;
         }
@@ -68,9 +106,13 @@ server.on('connection', (ws: WebSocket) => {
 });
 
 function isTransactionDuplicate(transaction: Transaction): boolean {
-    return NormanCoin.transactions.some(
-        (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
-    );
+    return NormanCoin.transactions.some((tx) => {
+        console.log('_______________________');
+        console.log(JSON.stringify(tx));
+        console.log(JSON.stringify(transaction));
+        console.log(JSON.stringify(tx) === JSON.stringify(transaction));
+        return JSON.stringify(tx) === JSON.stringify(transaction);
+    });
 }
 
 function connect(address: string): void {
@@ -140,7 +182,7 @@ rl.on('line', (command) => {
             const transaction = new Transaction(
                 ownerKey.getPublic('hex'),
                 BOB_KEY.getPublic('hex'),
-                200,
+                100,
                 20, // gas
             );
             transaction.signTransaction(ownerKey);

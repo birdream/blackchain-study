@@ -1,18 +1,19 @@
 import WebSocket from 'ws';
 
-import { Block, NormanCoin, Transaction } from './blockchain';
+import { Transaction } from './blockchain';
 import readline from 'readline';
 
-import { JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
+import { BOB_KEY, JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
 
-const PORT = 3001;
-const MY_ADDRESS = 'ws://localhost:3001';
+const PORT = 3003;
+const MY_ADDRESS = `ws://localhost:${PORT}`;
 const server = new WebSocket.Server({ port: PORT });
+const PEERS = ['ws://localhost:3002']; // only connect to Jenifer Node
 
 let opened: any[] = [];
 let connected: any[] = [];
 
-console.log('John listening on PORT ' + PORT);
+console.log('Bob listening on PORT ' + PORT);
 
 type Message = {
     type: string;
@@ -27,39 +28,12 @@ server.on('connection', (ws: WebSocket) => {
         console.log(_message);
 
         switch (_message.type) {
-            case 'TYPE_REPLACE_CHAIN':
-                console.log('Received new chain from peer');
-                const [newBlock, newDiff] = _message.data;
-
-                if (
-                    newBlock.previousHash !==
-                        NormanCoin.getLastBlock().previousHash &&
-                    NormanCoin.getLastBlock().hash === newBlock.previousHash &&
-                    Block.hasValidTransactions(newBlock, NormanCoin)
-                ) {
-                    NormanCoin.chain.push(newBlock);
-                    NormanCoin.difficulty = newDiff;
-                    console.log(`New block added: ${newBlock.hash}`);
-                    console.log(`New difficulty: ${newDiff}`);
-                    console.log(
-                        `Current chain length: ${NormanCoin.chain.length}`,
-                    );
-                } else {
-                    console.log('Invalid block received');
-                }
-
+            case 'TYPE_GET_BALANCE_RESPONSE':
+                console.log(`Bob Your balance is: ${_message.data}`);
                 break;
-            case 'TYPE_CREATE_TRANSACTION':
-                const transaction = _message.data;
-                if (!isTransactionDuplicate(transaction)) {
-                    NormanCoin.addTransaction(transaction);
-                    console.log(`New transaction added: ${transaction.hash}`);
-                }
-
+            case 'TYPE_VERIFY_RESPONSE':
+                console.log(`Block verified: ${_message.data}`);
                 break;
-            case 'TYPE_HANDSHAKE':
-                const nodes = _message.data;
-                nodes.forEach((node: any) => connect(node));
             default:
                 break;
         }
@@ -70,11 +44,11 @@ server.on('connection', (ws: WebSocket) => {
     // });
 });
 
-function isTransactionDuplicate(transaction: Transaction): boolean {
-    return NormanCoin.transactions.some(
-        (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
-    );
-}
+// function isTransactionDuplicate(transaction: Transaction): boolean {
+//     return NormanCoin.transactions.some(
+//         (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
+//     );
+// }
 
 function connect(address: string): void {
     if (
@@ -117,6 +91,10 @@ function connect(address: string): void {
     }
 }
 
+PEERS.forEach((peer) => {
+    connect(peer);
+});
+
 function produceMessage(type: string, data: any): Message {
     return {
         type,
@@ -136,15 +114,15 @@ const rl = readline.createInterface({
     prompt: 'Enter a command:\n',
 });
 
-const ownerKey = JOHN_KEY;
+const ownerKey = BOB_KEY;
 rl.on('line', (command) => {
     switch (command.toLocaleLowerCase()) {
         case 'send':
             const transaction = new Transaction(
                 ownerKey.getPublic('hex'),
-                JENIFER_KEY.getPublic('hex'),
-                500,
-                15, // gas
+                JOHN_KEY.getPublic('hex'),
+                51,
+                2, // gas
             );
             transaction.signTransaction(ownerKey);
             sendMessage(produceMessage('TYPE_CREATE_TRANSACTION', transaction));
@@ -152,13 +130,15 @@ rl.on('line', (command) => {
             break;
         case 'bl':
         case 'balance':
-            console.log(
-                `John Your balance is: ${NormanCoin.getBalanceOfAddress(ownerKey.getPublic('hex'))}`,
+            sendMessage(
+                produceMessage('TYPE_GET_BALANCE', [
+                    MY_ADDRESS,
+                    ownerKey.getPublic('hex'),
+                ]),
             );
             break;
-        case 'bc':
-        case 'blockchain':
-            console.log(JSON.stringify(NormanCoin.chain, null, 2));
+        case 'verify':
+            sendMessage(produceMessage('TYPE_VERIFY', [MY_ADDRESS]));
             break;
         case 'clear':
             console.clear();

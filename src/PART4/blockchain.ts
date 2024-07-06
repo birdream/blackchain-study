@@ -168,14 +168,19 @@ class BlockChain {
             const previousBlock = this.chain[i - 1];
 
             if (currentBlock.hash !== Block.getHash(currentBlock)) {
+                console.log('Invalid hash: ' + currentBlock.hash);
                 return false;
             }
 
             if (currentBlock.previousHash !== previousBlock.hash) {
+                console.log(
+                    'Invalid previous hash: ' + currentBlock.previousHash,
+                );
                 return false;
             }
 
             if (!Block.hasValidTransactions(currentBlock, this)) {
+                console.log('Invalid transactions in block: ' + i);
                 return false;
             }
         }
