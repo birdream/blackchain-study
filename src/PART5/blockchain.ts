@@ -109,6 +109,8 @@ class BlockChain {
             MINT_PUBLIC_ADDRESS,
             JOHN_KEY.getPublic('hex'),
             10000,
+            0,
+            Date.now(),
         );
         this.chain = [
             new Block(0, [initialCoinRelease], 1, this.difficulty, '0'),
@@ -140,6 +142,8 @@ class BlockChain {
             MINT_PUBLIC_ADDRESS,
             minerRewardAddress,
             this.reward + gas,
+            0,
+            Date.now(),
         );
         rewardTransaction.signTransaction(MINT_KEY_PAIR);
 
@@ -229,12 +233,14 @@ class Transaction {
         public to: string,
         public amount: number,
         public gas: number = 0,
+        public timestamp: number,
     ) {
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.signature = '';
         this.gas = gas;
+        this.timestamp = timestamp;
     }
 
     // Sign the transaction with the given key

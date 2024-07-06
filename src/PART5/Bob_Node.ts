@@ -71,6 +71,7 @@ rl.on('line', (command) => {
                 JOHN_KEY.getPublic('hex'),
                 51,
                 2, // gas
+                Date.now(),
             );
             transaction.signTransaction(ownerKey);
             sendMessage(

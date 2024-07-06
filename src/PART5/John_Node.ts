@@ -98,6 +98,7 @@ rl.on('line', (command) => {
                 JENIFER_KEY.getPublic('hex'),
                 500,
                 15, // gas
+                Date.now(),
             );
             transaction.signTransaction(ownerKey);
             sendMessage(

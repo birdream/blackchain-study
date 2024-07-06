@@ -128,6 +128,7 @@ rl.on('line', (command) => {
                 BOB_KEY.getPublic('hex'),
                 200,
                 20, // gas
+                Date.now(),
             );
             transaction.signTransaction(ownerKey);
             sendMessage(
