@@ -10,6 +10,7 @@ const MINT_PRIVATE_ADDRESS =
 const MINT_KEY_PAIR = ec.keyFromPrivate(MINT_PRIVATE_ADDRESS, 'hex');
 const MINT_PUBLIC_ADDRESS = MINT_KEY_PAIR.getPublic('hex');
 
+console.log('MINT_PUBLIC_ADDRESS:', MINT_PUBLIC_ADDRESS);
 import { JOHN_KEY, JENIFER_KEY, MINER_KEY, BOB_KEY } from './keys';
 // Example usage:
 // const hash = SHA256('Hello, world!');
@@ -81,7 +82,7 @@ class BlockChain {
         const initialCoinRelease = new Transaction(
             MINT_PUBLIC_ADDRESS,
             JOHN_KEY.getPublic('hex'),
-            1000,
+            10000,
         );
         this.chain = [new Block('', [initialCoinRelease])];
         this.difficulty = 2;
@@ -217,10 +218,29 @@ class Transaction {
     }
 
     static isValid(tx: Transaction, chain: BlockChain) {
+        // console.log('--------------Transaction Validation--------------');
+        // console.log(
+        //     chain.getBalanceOfAddress(tx.from) >= tx.amount + tx.gas ||
+        //         tx.from === MINT_PUBLIC_ADDRESS,
+        // );
+        // console.log(chain.getBalanceOfAddress(tx.from) >= tx.amount + tx.gas);
+        // console.log(tx.from === MINT_PUBLIC_ADDRESS);
+        // console.log(tx.from);
+        // console.log(MINT_PUBLIC_ADDRESS);
+        // console.log(
+        //     ec
+        //         .keyFromPublic(tx.from, 'hex')
+        //         .verify(
+        //             SHA256(tx.from + tx.to + tx.amount + tx.gas),
+        //             tx.signature,
+        //         ),
+        // );
         return (
             tx.from &&
             tx.to &&
             tx.amount &&
+            // TODO this is not a correct way to check balance, need to fix it
+            // because use the from current to check the block already there is not make sense
             (chain.getBalanceOfAddress(tx.from) >= tx.amount + tx.gas ||
                 tx.from === MINT_PUBLIC_ADDRESS) &&
             ec

@@ -182,7 +182,7 @@ rl.on('line', (command) => {
             const transaction = new Transaction(
                 ownerKey.getPublic('hex'),
                 BOB_KEY.getPublic('hex'),
-                100,
+                200,
                 20, // gas
             );
             transaction.signTransaction(ownerKey);
@@ -213,3 +213,26 @@ rl.on('line', (command) => {
 });
 
 process.on('uncaughtException', (err) => console.log(err));
+
+function isTransactionIncluded(transaction: Transaction): boolean {
+    return NormanCoin.chain.some((block) =>
+        block.data.some(
+            (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
+        ),
+    );
+}
+
+// Broadcast transactions every 10 seconds
+function broadcastTransaction(): void {
+    NormanCoin.transactions.forEach((transaction, idx) => {
+        if (isTransactionIncluded(transaction)) {
+            NormanCoin.transactions.splice(idx, 1);
+        } else {
+            sendMessage(produceMessage('TYPE_CREATE_TRANSACTION', transaction));
+        }
+    });
+
+    setTimeout(broadcastTransaction, 10000); // Broadcast to all connected nodes after a delay
+}
+
+broadcastTransaction();

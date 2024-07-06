@@ -3,7 +3,7 @@ import WebSocket from 'ws';
 import { Block, NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
-import { JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
+import { BOB_KEY, JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
 
 const PORT = 3001;
 const MY_ADDRESS = 'ws://localhost:3001';
@@ -139,6 +139,14 @@ const rl = readline.createInterface({
 const ownerKey = JOHN_KEY;
 rl.on('line', (command) => {
     switch (command.toLocaleLowerCase()) {
+        case 'gk':
+            console.log('MINER: ' + MINER_KEY.getPublic('hex'));
+            console.log('JOHN: ' + ownerKey.getPublic('hex'));
+            console.log('JENIFER: ' + JENIFER_KEY.getPublic('hex'));
+            console.log('BOB: ' + BOB_KEY.getPrivate('hex'));
+            console.log('--------------');
+
+            break;
         case 'send':
             const transaction = new Transaction(
                 ownerKey.getPublic('hex'),
@@ -171,5 +179,28 @@ rl.on('line', (command) => {
     console.log('Exiting...');
     process.exit(0);
 });
+
+function isTransactionIncluded(transaction: Transaction): boolean {
+    return NormanCoin.chain.some((block) =>
+        block.data.some(
+            (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
+        ),
+    );
+}
+
+// Broadcast transactions every 10 seconds
+function broadcastTransaction(): void {
+    NormanCoin.transactions.forEach((transaction, idx) => {
+        if (isTransactionIncluded(transaction)) {
+            NormanCoin.transactions.splice(idx, 1);
+        } else {
+            sendMessage(produceMessage('TYPE_CREATE_TRANSACTION', transaction));
+        }
+    });
+
+    setTimeout(broadcastTransaction, 10000); // Broadcast to all connected nodes after a delay
+}
+
+broadcastTransaction();
 
 process.on('uncaughtException', (err) => console.log(err));
