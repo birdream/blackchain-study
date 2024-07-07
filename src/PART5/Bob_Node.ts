@@ -1,9 +1,10 @@
 import WebSocket from 'ws';
 
-import { Transaction } from './blockchain';
+import { NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
 import { connect, produceMessage, sendMessage } from './utils/websocketUtil';
+import { getLastBlockHash } from './utils/blockchainUtil';
 
 import { BOB_KEY, JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
 
@@ -15,6 +16,7 @@ const PEERS = ['ws://localhost:3002']; // only connect to Jenifer Node
 let opened: any[] = [];
 let connected: any[] = [];
 
+let chain: any[] = [];
 console.log('Bob listening on PORT ' + PORT);
 
 type Message = {
@@ -30,6 +32,18 @@ server.on('connection', (ws: WebSocket) => {
         console.log(_message);
 
         switch (_message.type) {
+            case 'TYPE_REPLACE_CHAIN':
+                if (
+                    _message.data[0].blockHeader.previousHash ===
+                        getLastBlockHash(chain) &&
+                    _message.data[0].transactionCount >= 1 &&
+                    _message.data[0].blockHeader.timestamp ===
+                        chain[chain.length - 1].timestamp
+                ) {
+                    chain.push(_message.data[0].blockHeader);
+                    console.log('Chain replaced');
+                }
+                break;
             case 'TYPE_GET_BALANCE_RESPONSE':
                 console.log(`Bob Your balance is: ${_message.data}`);
                 break;
@@ -90,6 +104,9 @@ rl.on('line', (command) => {
                 opened,
             );
             break;
+        case 'chain':
+            console.log(chain);
+            break;
         case 'verify':
             sendMessage(produceMessage('TYPE_VERIFY', [MY_ADDRESS]), opened);
             break;
@@ -104,5 +121,7 @@ rl.on('line', (command) => {
     console.log('Exiting...');
     process.exit(0);
 });
+
+chain.push(NormanCoin.chain[0].blockHeader);
 
 process.on('uncaughtException', (err) => console.log(err));

@@ -1,4 +1,7 @@
-import { Block, NormanCoin, Transaction } from '../blockchain';
+import { Block, BlockChain, NormanCoin, Transaction } from '../blockchain';
+import * as crypto from 'crypto';
+const SHA256 = (msg: string): string =>
+    crypto.createHash('sha256').update(msg).digest('hex');
 
 export function isTransactionDuplicate(transaction: Transaction): boolean {
     return NormanCoin.transactions.some(
@@ -11,5 +14,17 @@ export function isTransactionIncluded(transaction: Transaction): boolean {
         block.data.some(
             (tx) => JSON.stringify(tx) === JSON.stringify(transaction),
         ),
+    );
+}
+
+export function getLastBlockHash(chain: any[]) {
+    const lastHeader = chain[chain.length - 1];
+
+    return SHA256(
+        lastHeader.nonce +
+            lastHeader.timestamp +
+            lastHeader.difficulty +
+            lastHeader.merkleRoot +
+            lastHeader.previousHash,
     );
 }
