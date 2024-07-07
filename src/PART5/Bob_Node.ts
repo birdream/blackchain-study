@@ -37,11 +37,13 @@ server.on('connection', (ws: WebSocket) => {
                     _message.data[0].blockHeader.previousHash ===
                         getLastBlockHash(chain) &&
                     _message.data[0].transactionCount >= 1 &&
-                    _message.data[0].blockHeader.timestamp ===
+                    _message.data[0].blockHeader.timestamp >
                         chain[chain.length - 1].timestamp
                 ) {
                     chain.push(_message.data[0].blockHeader);
                     console.log('Chain replaced');
+                } else {
+                    console.log('Invalid chain');
                 }
                 break;
             case 'TYPE_GET_BALANCE_RESPONSE':

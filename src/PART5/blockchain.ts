@@ -67,10 +67,10 @@ class Block {
     static getHash(blockHeader: Block['blockHeader']): string {
         return SHA256(
             blockHeader.nonce +
-                blockHeader.previousHash +
                 blockHeader.timestamp +
                 blockHeader.difficulty +
-                blockHeader.merkleRoot,
+                blockHeader.merkleRoot +
+                blockHeader.previousHash,
         ).toString();
     }
 
