@@ -1,7 +1,4 @@
 import { Block, BlockChain, NormanCoin, Transaction } from '../blockchain';
-// import * as crypto from 'crypto';
-// const SHA256 = (msg: string): string =>
-//     crypto.createHash('sha256').update(msg).digest('hex');
 
 export function isTransactionDuplicate(transaction: Transaction): boolean {
     return NormanCoin.transactions.some(
@@ -17,9 +14,51 @@ export function isTransactionIncluded(transaction: Transaction): boolean {
     );
 }
 
-// TODO chain type is any[] need to be fixed
-export function getLastBlockHash(chain: any[]) {
+export function getLastBlockHash(chain: Block['blockHeader'][]) {
     const lastHeader = chain[chain.length - 1];
 
     return Block.getHash(lastHeader);
+}
+
+export function getLastTransaction(transactionHistory: any[]) {
+    return transactionHistory[transactionHistory.length - 1];
+}
+
+export function getTransactionBlock(
+    blockchain: BlockChain,
+    from: string,
+    to: string,
+    amount: number,
+    gas: number,
+    timestamp: number,
+    signature: string,
+) {
+    for (const block of blockchain.chain) {
+        for (const transaction of block.data) {
+            if (
+                transaction.from === from &&
+                transaction.to === to &&
+                transaction.amount === amount &&
+                transaction.gas === gas &&
+                transaction.timestamp === timestamp &&
+                transaction.signature === signature
+            ) {
+                return block;
+            }
+        }
+    }
+    return null;
+}
+
+export function isMerkleRootFound(
+    chain: Block['blockHeader'][],
+    merkleRoot: string,
+): boolean {
+    let found = false;
+    chain.forEach((blockHeader) => {
+        if (blockHeader.merkleRoot === merkleRoot) {
+            found = true;
+        }
+    });
+    return found;
 }

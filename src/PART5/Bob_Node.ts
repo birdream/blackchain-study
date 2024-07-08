@@ -1,10 +1,15 @@
 import WebSocket from 'ws';
 
-import { NormanCoin, Transaction } from './blockchain';
+import { Block, NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
 import { connect, produceMessage, sendMessage } from './utils/websocketUtil';
-import { getLastBlockHash } from './utils/blockchainUtil';
+import {
+    getLastBlockHash,
+    getLastTransaction,
+    isMerkleRootFound,
+} from './utils/blockchainUtil';
+import * as Merkle from './utils/merkleRootUtil';
 
 import { BOB_KEY, JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
 
@@ -16,7 +21,9 @@ const PEERS = ['ws://localhost:3002']; // only connect to Jenifer Node
 let opened: any[] = [];
 let connected: any[] = [];
 
-let chain: any[] = [];
+let chain: Block['blockHeader'][] = [];
+let transactionHistory: any[] = [];
+
 console.log('Bob listening on PORT ' + PORT);
 
 type Message = {
@@ -51,6 +58,34 @@ server.on('connection', (ws: WebSocket) => {
                 break;
             case 'TYPE_VERIFY_RESPONSE':
                 console.log(`Block verified: ${_message.data}`);
+                break;
+
+            case 'VERIFY_TRANSACTION':
+                const { merkleRoot, proof, leaves } = _message.data;
+                // console.log('Merkle Root:', merkleRoot);
+                // console.log('Proof:', proof);
+                // console.log('Leaves:', leaves);
+
+                const validProof = [
+                    {
+                        position: proof[0].position,
+                        data: Buffer.from(proof[0].data),
+                    },
+                ];
+                if (isMerkleRootFound(chain, merkleRoot)) {
+                    const isTransactionIncluded = Merkle.verifyTransaction(
+                        validProof,
+                        leaves,
+                        getLastTransaction(transactionHistory),
+                        merkleRoot,
+                    );
+                    console.log(
+                        'Is Transaction Included:',
+                        isTransactionIncluded,
+                    );
+                } else {
+                    console.log('MerkleRoot Not Found');
+                }
                 break;
             default:
                 break;
@@ -90,10 +125,13 @@ rl.on('line', (command) => {
                 Date.now(),
             );
             transaction.signTransaction(ownerKey);
+            transactionHistory.push(transaction);
+
             sendMessage(
                 produceMessage('TYPE_CREATE_TRANSACTION', transaction),
                 opened,
             );
+
             console.log(`Transaction sent: ${transaction?.signature}`);
             break;
         case 'bl':
@@ -106,6 +144,18 @@ rl.on('line', (command) => {
                 opened,
             );
             break;
+        case 'tsv':
+        case 'transaction_verify':
+            const transactionToVerify = getLastTransaction(transactionHistory);
+            sendMessage(
+                produceMessage('VERIFY_TRANSACTION', {
+                    transaction: transactionToVerify,
+                    address: MY_ADDRESS,
+                }),
+                opened,
+            );
+            break;
+        case 'ch':
         case 'chain':
             console.log(chain);
             break;

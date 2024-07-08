@@ -32,7 +32,7 @@ import { JOHN_KEY, JENIFER_KEY, MINER_KEY, BOB_KEY } from './keys';
 // const BOB_WALLET = ec.genKeyPair();
 
 class Block {
-    data: any[];
+    data: Transaction[];
     hash: string;
     transactionCount: number;
     blockSize: number;
@@ -46,7 +46,7 @@ class Block {
 
     constructor(
         timestamp: number,
-        data: any[],
+        data: Transaction[],
         transactionCount: number,
         difficulty: number,
         merkleRoot: any,
@@ -65,7 +65,7 @@ class Block {
     }
 
     static getHash(blockHeader: Block['blockHeader']): string {
-        return SHA256(
+        return Block.sha256(
             blockHeader.nonce +
                 blockHeader.timestamp +
                 blockHeader.difficulty +
@@ -90,6 +90,8 @@ class Block {
             Transaction.isValid(tx, chain),
         );
     }
+
+    static sha256 = SHA256;
 }
 
 class BlockChain {
@@ -249,7 +251,9 @@ class Transaction {
             throw new Error('You cannot sign transactions for other wallets!');
         }
 
-        const hashTx = SHA256(this.from + this.to + this.amount + this.gas);
+        const hashTx = Block.sha256(
+            this.from + this.to + this.amount + this.gas,
+        );
         const sig = signingKey.sign(hashTx, 'base64');
         this.signature = sig.toDER('hex');
     }
@@ -283,7 +287,7 @@ class Transaction {
             ec
                 .keyFromPublic(tx.from, 'hex')
                 .verify(
-                    SHA256(tx.from + tx.to + tx.amount + tx.gas),
+                    Block.sha256(tx.from + tx.to + tx.amount + tx.gas),
                     tx.signature,
                 )
         );

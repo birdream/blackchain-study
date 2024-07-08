@@ -1,10 +1,12 @@
 import WebSocket from 'ws';
+import * as Merkle from './utils/merkleRootUtil';
 
 import { Block, NormanCoin, Transaction } from './blockchain';
 import readline from 'readline';
 
 import { connect, produceMessage, sendMessage } from './utils/websocketUtil';
 import {
+    getTransactionBlock,
     isTransactionDuplicate,
     isTransactionIncluded,
 } from './utils/blockchainUtil';
@@ -70,7 +72,49 @@ server.on('connection', (ws: WebSocket) => {
                 nodes.forEach((node: any) =>
                     connect(node, MY_ADDRESS, connected, opened),
                 );
+                break;
+            case 'VERIFY_TRANSACTION':
+                const { from, to, amount, gas, timestamp, signature } =
+                    _message.data?.transaction;
 
+                const block = getTransactionBlock(
+                    NormanCoin,
+                    from,
+                    to,
+                    amount,
+                    gas,
+                    timestamp,
+                    signature,
+                );
+                if (block) {
+                    const leaves = block.data.map((transaction) =>
+                        Block.sha256(JSON.stringify(transaction)),
+                    );
+                    const proof = Merkle.getMerkleProof(
+                        leaves,
+                        _message.data.transaction,
+                    );
+                    console.log(proof);
+                    opened.forEach((node) => {
+                        if (node.address === _message.data.address) {
+                            node.socket.send(
+                                JSON.stringify(
+                                    produceMessage('VERIFY_TRANSACTION', {
+                                        merkleRoot:
+                                            block.blockHeader.merkleRoot,
+                                        proof,
+                                        leaves,
+                                    }),
+                                ),
+                            );
+                        }
+                    });
+                } else {
+                    console.log(
+                        `Transaction not verified: ${transaction.hash}`,
+                    );
+                }
+                break;
             case 'TYPE_GET_BALANCE':
                 const [address, publicKey] = _message.data;
                 opened.forEach((node) => {
