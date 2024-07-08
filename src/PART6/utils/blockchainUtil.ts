@@ -62,3 +62,21 @@ export function isMerkleRootFound(
     });
     return found;
 }
+
+export function is32bytesHexString(hex: string = '') {
+    return hex.length === 64;
+}
+
+export function getSmartContract(blockchain: BlockChain, address: string) {
+    for (const block of blockchain.chain) {
+        for (const transaction of block.data) {
+            if (transaction.data?.smartContractAddress === address) {
+                return {
+                    smartContract: transaction.data.smartContract,
+                    deployBy: transaction.from,
+                };
+            }
+        }
+    }
+    return { smartContract: null, deployBy: null };
+}

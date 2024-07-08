@@ -11,6 +11,7 @@ import {
 
 import { BOB_KEY, JENIFER_KEY, JOHN_KEY, MINER_KEY } from './keys';
 import { send } from 'process';
+import { exec } from 'child_process';
 
 const PORT = 3001;
 const MY_ADDRESS = 'ws://localhost:3001';
@@ -111,6 +112,30 @@ rl.on('line', (command) => {
                 opened,
             );
             console.log(`Transaction sent: ${deployTransaction}`);
+            break;
+        case 'esc':
+        case 'execute_smart_contract':
+            const txInfo = {
+                additionalData: {
+                    txCallArgs: [10, 20],
+                    // publicKeyArgs: []
+                },
+            };
+
+            const executeTransaction = new Transaction(
+                JOHN_KEY.getPublic('hex'),
+                '1a58d94ebe794386ae41816ffbe467423fb1a70dd57b47bd22450427e192fc09',
+                0,
+                20,
+                Date.now(),
+                txInfo,
+            );
+            executeTransaction.signTransaction(JOHN_KEY);
+            sendMessage(
+                produceMessage('TYPE_CREATE_TRANSACTION', executeTransaction),
+                opened,
+            );
+            console.log(`Transaction sent: ${executeTransaction}`);
             break;
         case 'smart':
             console.log(NormanCoin.chain[2].data);

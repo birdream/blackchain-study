@@ -3,6 +3,7 @@ const SHA256 = (msg: string): string =>
     crypto.createHash('sha256').update(msg).digest('hex');
 
 import * as Merkle from './utils/merkleRootUtil';
+import { is32bytesHexString, getSmartContract } from './utils/blockchainUtil';
 
 import * as elliptic from 'elliptic';
 const ec = new elliptic.ec('secp256k1');
@@ -104,9 +105,16 @@ class Block {
     }
 
     static hasValidTransactions(block: Block, chain: BlockChain) {
-        return block.data.every((tx: Transaction) =>
+        const blockValidities = block.data.every((tx: Transaction) =>
             Transaction.isValid(tx, chain),
         );
+        if (!blockValidities) {
+            return false;
+        }
+
+        SmartContract.executeSmartContract(block.data);
+
+        return true;
     }
 
     static sha256 = SHA256;
@@ -152,6 +160,8 @@ class BlockChain {
         this.transactions.forEach((tx: Transaction) => {
             gas += tx.gas;
         });
+
+        SmartContract.executeSmartContract(this.transactions);
 
         const rewardTransaction = new Transaction(
             MINT_PUBLIC_ADDRESS,
@@ -258,6 +268,7 @@ class Transaction {
         this.gas = gas;
         this.timestamp = timestamp;
         this.data = data;
+
         if (to === '' && data?.smartContract) {
             this.data.smartContractAddress = Block.sha256(
                 getSignPayload({
@@ -348,6 +359,23 @@ class Transaction {
                 tx.signature,
             )
         );
+    }
+}
+
+class SmartContract {
+    static executeSmartContract(transactions: Transaction[]) {
+        transactions.forEach((tx: Transaction) => {
+            if (is32bytesHexString(tx.to)) {
+                const { smartContract, deployBy } = getSmartContract(
+                    NormanCoin,
+                    tx.to,
+                );
+                if (smartContract) {
+                    console.log(smartContract);
+                    // const { result } = runtime(smartContract, tx.gas, tx.data);
+                }
+            }
+        });
     }
 }
 
